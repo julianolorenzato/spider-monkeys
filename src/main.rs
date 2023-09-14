@@ -4,20 +4,20 @@ use ggez::graphics::{Canvas, Color, DrawMode, Mesh, Rect, Text};
 use ggez::input::keyboard::KeyCode;
 use ggez::{Context, ContextBuilder, GameResult};
 
-#[derive(Debug)]
 struct GameState {
     spaceship: Mesh,
     landing_base: Mesh,
     fuel_indicator: Mesh,
-    height: f32,              // m
-    speed: f32,               // m/s
-    gravity: f32,             // m/s²
-    fuel: f32,                // l
-    engine_acceleration: f32, // m/s²
+    is_active_engine: bool,
+    height: f32,               // m
+    speed: f32,                // m/s
+    gravity_acceleration: f32, // m/s²
+    engine_acceleration: f32,  // m/s²
+    fuel: f32,                 // l
 }
 
 const FPS: u32 = 60;
-const DIMENSION_SCALE: f32 = 0.5;
+const DIMENSION_SCALE: f32 = 10.0;
 
 impl GameState {
     pub fn new(ctx: &mut Context) -> GameState {
@@ -40,8 +40,8 @@ impl GameState {
         let fuel_indicator = Mesh::new_rectangle(
             ctx,
             DrawMode::fill(),
-            Rect::new(20.0, 20.0, 200.0, 100.00),
-            Color::WHITE,
+            Rect::new(20.0, 20.0, 200.0, 20.00),
+            Color::BLUE,
         )
         .unwrap();
 
@@ -49,11 +49,12 @@ impl GameState {
             spaceship,
             landing_base,
             fuel_indicator,
+            is_active_engine: false,
             height: 0.0, // increase from top to bottom
             speed: 0.0,
-            gravity: 10.0,
+            gravity_acceleration: 10.0,
+            engine_acceleration: 40.0,
             fuel: 100.0,
-            engine_acceleration: 10.0,
         }
     }
 }
@@ -61,24 +62,41 @@ impl GameState {
 impl EventHandler for GameState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         while ctx.time.check_update_time(FPS) {
-            // Increase 10m/s to speed each second
-            self.speed = self.speed + (self.gravity / FPS as f32);
+            // Divide all values per FPS to keep the values per second correct
+            let speed = self.speed / FPS as f32;
+            let gravity_acceleration = self.gravity_acceleration / FPS as f32;
+            let engine_acceleration = self.engine_acceleration / FPS as f32;
 
-            // Increase height based on speed modified by a scale factor
-            self.height = self.height + self.speed;
+            // Increase height based on speed
+            self.height += speed;
 
-            if self.height <= 0.0 {
+            // Slow down if engine is active
+            if self.is_active_engine && self.fuel > 0.0 {
+                self.speed += gravity_acceleration - engine_acceleration;
+                self.fuel -= 0.3;
+            } else {
+                self.speed += gravity_acceleration;
+            }
+
+            if self.height < 0.0 {
                 self.speed = 0.0;
                 self.height = 0.0;
             }
 
             // Each second do this:
-            if ctx.time.ticks() as u32 % FPS == 0 {
-                println!("height: {}", self.height);
-                println!("speed: {}", self.speed);
-            }
+            // if ctx.time.ticks() as u32 % FPS == 0 {
+            //     println!("height: {}", self.height);
+            //     println!("speed: {}", self.speed);
+            //     println!("motor active: {}", self.is_active_engine);
+            //     println!("gravity acceleration: {}", self.gravity_acceleration);
+            // }
 
-            if self.height >= 900.0 {
+            // if self.fuel <= 0.0 {
+            //     println!("GAMEOVER, NO FUEL");
+            //     ctx.request_quit()
+            // }
+
+            if self.height >= 450.0 {
                 if self.speed > 5.0 {
                     println!("GAMEOVER")
                 } else {
@@ -94,16 +112,32 @@ impl EventHandler for GameState {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         let mut canvas = Canvas::from_frame(ctx, Color::BLACK);
+
+        canvas.draw(&self.spaceship, Vec2::new(0.0, self.height));
+
         canvas.draw(
-            &self.spaceship,
-            Vec2::new(0.0, self.height * DIMENSION_SCALE),
+            &Mesh::new_rectangle(
+                ctx,
+                DrawMode::fill(),
+                Rect::new(20.0, 20.0, self.fuel * 2.0, 20.00),
+                Color::BLUE,
+            )
+            .unwrap(),
+            Vec2::new(0.0, 0.0),
         );
 
+        let fuel_str = format!(
+            "Combustível: {} L",
+            if self.fuel < 0.0 { 0.0 } else { self.fuel }
+        );
+        canvas.draw(&Text::new(fuel_str), Vec2::new(40.0, 22.0));
+
         let speed_str = format!("Velocidade: {} m/s", self.speed);
-        let height_str = format!("Altura: {} m", self.height * -1.0 + 900.0);
         canvas.draw(&Text::new(speed_str), Vec2::new(550.0, 20.0));
-        // canvas.draw(&self.fuel_indicator);
+
+        let height_str = format!("Altura: {} m", self.height * -1.0 + 450.0);
         canvas.draw(&Text::new(height_str), Vec2::new(550.0, 60.0));
+
         canvas.finish(ctx)
     }
 
@@ -114,7 +148,20 @@ impl EventHandler for GameState {
         _repeated: bool,
     ) -> GameResult {
         match input.keycode {
-            Some(KeyCode::NumpadEnter) => self.speed = self.speed - self.engine_acceleration,
+            Some(KeyCode::NumpadEnter) => self.is_active_engine = true,
+            _ => (),
+        }
+
+        Ok(())
+    }
+
+    fn key_up_event(
+        &mut self,
+        _ctx: &mut Context,
+        input: ggez::input::keyboard::KeyInput,
+    ) -> GameResult {
+        match input.keycode {
+            Some(KeyCode::NumpadEnter) => self.is_active_engine = false,
             _ => (),
         }
 
