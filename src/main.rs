@@ -7,6 +7,8 @@ use ggez::{Context, ContextBuilder, GameResult};
 #[derive(Debug)]
 struct GameState {
     spaceship: Mesh,
+    landing_base: Mesh,
+    fuel_indicator: Mesh,
     height: f32,              // m
     speed: f32,               // m/s
     gravity: f32,             // m/s²
@@ -22,13 +24,31 @@ impl GameState {
         let spaceship = Mesh::new_rectangle(
             ctx,
             DrawMode::fill(),
-            Rect::new(0.0, 0.0, 80.0, 150.0),
+            Rect::new(360.0, 0.0, 80.0, 150.0),
+            Color::WHITE,
+        )
+        .unwrap();
+
+        let landing_base = Mesh::new_rectangle(
+            ctx,
+            DrawMode::fill(),
+            Rect::new(5.0, 5.0, 50.0, 200.0),
+            Color::WHITE,
+        )
+        .unwrap();
+
+        let fuel_indicator = Mesh::new_rectangle(
+            ctx,
+            DrawMode::fill(),
+            Rect::new(20.0, 20.0, 200.0, 100.00),
             Color::WHITE,
         )
         .unwrap();
 
         GameState {
             spaceship,
+            landing_base,
+            fuel_indicator,
             height: 0.0, // increase from top to bottom
             speed: 0.0,
             gravity: 10.0,
@@ -46,6 +66,11 @@ impl EventHandler for GameState {
 
             // Increase height based on speed modified by a scale factor
             self.height = self.height + self.speed;
+
+            if self.height <= 0.0 {
+                self.speed = 0.0;
+                self.height = 0.0;
+            }
 
             // Each second do this:
             if ctx.time.ticks() as u32 % FPS == 0 {
@@ -77,6 +102,7 @@ impl EventHandler for GameState {
         let speed_str = format!("Velocidade: {} m/s", self.speed);
         let height_str = format!("Altura: {} m", self.height * -1.0 + 900.0);
         canvas.draw(&Text::new(speed_str), Vec2::new(550.0, 20.0));
+        // canvas.draw(&self.fuel_indicator);
         canvas.draw(&Text::new(height_str), Vec2::new(550.0, 60.0));
         canvas.finish(ctx)
     }
