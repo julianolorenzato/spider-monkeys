@@ -6,8 +6,6 @@ use ggez::{Context, ContextBuilder, GameResult};
 
 struct GameState {
     spaceship: Mesh,
-    landing_base: Mesh,
-    fuel_indicator: Mesh,
     is_active_engine: bool,
     height: f32,               // m
     speed: f32,                // m/s
@@ -17,7 +15,6 @@ struct GameState {
 }
 
 const FPS: u32 = 60;
-const DIMENSION_SCALE: f32 = 10.0;
 
 impl GameState {
     pub fn new(ctx: &mut Context) -> GameState {
@@ -29,26 +26,8 @@ impl GameState {
         )
         .unwrap();
 
-        let landing_base = Mesh::new_rectangle(
-            ctx,
-            DrawMode::fill(),
-            Rect::new(5.0, 5.0, 50.0, 200.0),
-            Color::WHITE,
-        )
-        .unwrap();
-
-        let fuel_indicator = Mesh::new_rectangle(
-            ctx,
-            DrawMode::fill(),
-            Rect::new(20.0, 20.0, 200.0, 20.00),
-            Color::BLUE,
-        )
-        .unwrap();
-
         GameState {
             spaceship,
-            landing_base,
-            fuel_indicator,
             is_active_engine: false,
             height: 0.0, // increase from top to bottom
             speed: 0.0,
